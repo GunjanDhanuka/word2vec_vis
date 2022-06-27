@@ -1,14 +1,13 @@
 import plotly
 import plotly.graph_objs as go
 import numpy as np
-import pickle
 import streamlit as st
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from gensim.models import Word2Vec
 import pandas as pd
-from plots import horizontal_bar, display_scatterplot_2D, display_scatterplot_3D
-from train import train_on_dataframe, train_on_raw_text
+from scripts.plots import horizontal_bar, display_scatterplot_2D, display_scatterplot_3D
+from scripts.train import train_on_dataframe, train_on_raw_text
 import requests
 
 
