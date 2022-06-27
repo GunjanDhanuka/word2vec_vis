@@ -13,6 +13,7 @@ from nltk import WordNetLemmatizer
 import warnings
 import multiprocessing
 import streamlit as st
+import stqdm
 warnings.filterwarnings("ignore")
 from gensim.models.phrases import Phrases, Phraser
 from gensim.models import Word2Vec
@@ -28,13 +29,14 @@ Word = WordNetLemmatizer()
 stop_words = stopwords.words('english')
 TEXT_COL = ''
 
-def train_on_dataframe(df, text_col):
+# @st.cache(suppress_st_warning=True)
+def train_on_dataframe(df, text_col, PARAMS):
+    print('Entered training subroutine..')
     df = df.dropna().reset_index(drop=True)
     TEXT_COL = text_col
     df[TEXT_COL] = df[TEXT_COL].astype("string")
     t = time()
-    while st.spinner('Cleaning and preprocessing data...'):
-        preprocess(df, TEXT_COL)
+    preprocess(df, TEXT_COL)
     message = 'Time taken to clean up and preprocess data: {} mins'.format(round((time() - t) / 60, 2))
     print(message)
     st.success(message)
@@ -53,46 +55,43 @@ def train_on_dataframe(df, text_col):
     st.write("Top 10 words from the text corpus:")
     st.write(highest_freq)
 
-    min_count = st.sidebar.slider('Ignores all words with total frequency lower than this', 1, 50, 20)
-    window = st.sidebar.slider('Maximum distance between the current and predicted word within a sentence.', 1, 10, 2)
-    sg_choice = st.sidebar.selectbox('Training Algorithm', ('Skip-gram', 'CBOW'))
-    vector_size = st.sidebar.slider('Dimensionality of the word vectors', 50, 300, 300)
-    alpha = st.sidebar.slider('Initial learning rate', 0.001, 0.1, 0.03)
-    min_alpha = st.sidebar.slider('Learning rate with linearly drop to min_alpha as training progresses', 0.00001, 0.001, 0.0007)
-    negative = st.sidebar.slider('If > 0, negative sampling will be used, the int for negative specifies how many “noise words” should be drawn', 5, 20, 20)
-    epochs = st.sidebar.slider('Number of epochs for training (more the epochs, greater the training time)', 5, 30, 10)
-
-    sg = 1 if sg_choice == "Skip-gram" else 0
-
+    st.info('Model training has begun!')
     cores = multiprocessing.cpu_count() #Count the number of cores in a computer
-    w2v_model = Word2Vec(min_count=min_count,
-                     window=window,
-                     vector_size=vector_size,
-                     sample=6e-5,
-                     sg=sg,
-                     alpha=alpha, 
-                     min_alpha=min_alpha, 
-                     negative=negative,
-                     workers=cores-1)
+    w2v_model = Word2Vec(min_count=PARAMS['min_count'],
+                    window=PARAMS['window'],
+                    vector_size=PARAMS['vector_size'],
+                    sample=6e-5,
+                    sg= 1 if PARAMS['sg_choice'] == 'Skip-gram' else 0,
+                    alpha=PARAMS['alpha'], 
+                    min_alpha=PARAMS['min_alpha'], 
+                    negative=PARAMS['negative'],
+                    workers=cores-1)
+    # w2v_model = Word2Vec(min_count=20,
+    #                 window=2,
+    #                 vector_size=300,
+    #                 sample=6e-5,
+    #                 sg=1,
+    #                 alpha=0.03, 
+    #                 min_alpha=0.0007, 
+    #                 negative=20,
+    #                 workers=cores-1)
     
     # Building vocabulary table
     t = time()
     w2v_model.build_vocab(sentences, progress_per=10000)
-    message = 'Time to build vocab: {} mins'.format(round((time() - t) / 60, 2))
+    message = 'Time taken to build vocab: {} mins'.format(round((time() - t) / 60, 2))
     print(message)
     st.success(message)
-
-
-    if st.button('Train Word2Vec Model'):
-        t = time()
-        with st.spinner('Training Word2Vec Model'):
-            w2v_model.train(sentences, total_examples=w2v_model.corpus_count, epochs=epochs, report_delay=1)
-        message = 'Time taken to train the model: {} mins'.format(round((time() - t) / 60, 2))
-        st.success(message)
-        print(message)
-        return w2v_model
-    else:
-        st.sidebar.write('Press the button to start training!')
+    t = time()
+    with st.spinner('Training Word2Vec Model'):
+        w2v_model.train(sentences, total_examples=w2v_model.corpus_count, epochs=PARAMS['epochs'], report_delay=1)
+    message = 'Time taken to train the model: {} mins'.format(round((time() - t) / 60, 2))
+    st.success(message)
+    print(message)
+    if 'model' not in st.session_state:
+        st.session_state['model'] = w2v_model
+    # w2v_model.save('simpsons_w2v.bin')
+    return w2v_model
 
 def clean(raw):
     result = re.sub("<[a][^>]*>(.+?)</[a]>", 'Link.', raw)
@@ -123,9 +122,12 @@ def stop_words_remove(df, TEXT_COL):
     df[TEXT_COL] = df[TEXT_COL].apply(lambda x: " ".join(x for x in x.split() if x not in stop_words))
 
 def preprocess(df, TEXT_COL):
+    print('Preprocessing initiated...')
     df[TEXT_COL] = df[TEXT_COL].apply(clean)
     df[TEXT_COL] = df[TEXT_COL].apply(lambda x: remove_punct(x))
     lower_case(df, TEXT_COL)
     stop_words_remove(df, TEXT_COL)
     lemmatize(df, TEXT_COL)
+    print('Preprocessing finished')
+    return
 
