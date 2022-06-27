@@ -10,9 +10,9 @@ import pandas as pd
 
 def display_scatterplot_2D(model, user_input=None, words=None, label=None, color_map=None, annotation='On', dim_red = 'PCA', perplexity = 0, learning_rate = 0, iteration = 0, topn=0, sample=10):
     
-    if words == None:
+    if words == None or len(words)==0:
         if sample > 0:
-            words = np.random.choice(list(list(model.wv.index_to_key)), 100)
+            words = np.random.choice(list(list(model.wv.index_to_key)), 40)
         else:
             words = [ word for word in model.vocab ]
     
@@ -34,7 +34,7 @@ def display_scatterplot_2D(model, user_input=None, words=None, label=None, color
                     text = words[count:count+topn] if annotation == 'On' else '',
                     name = user_input[i],
                     textposition = "top center",
-                    textfont_size = 20,
+                    textfont_size = 15,
                     mode = 'markers+text',
                     marker = {
                         'size': 15,
@@ -53,7 +53,7 @@ def display_scatterplot_2D(model, user_input=None, words=None, label=None, color
                     text = words[count:],
                     name = 'input words',
                     textposition = "top center",
-                    textfont_size = 20,
+                    textfont_size = 15,
                     mode = 'markers+text',
                     marker = {
                         'size': 25,
@@ -96,7 +96,7 @@ def display_scatterplot_2D(model, user_input=None, words=None, label=None, color
 
 def display_scatterplot_3D(model, user_input=None, words=None, label=None, color_map=None, annotation='On',  dim_red = 'PCA', perplexity = 0, learning_rate = 0, iteration = 0, topn=0, sample=10):
     
-    if words == None:
+    if words == None or len(words)==0:
         if sample > 0:
             words = np.random.choice(list(list(model.wv.index_to_key)), 100)
         else:
@@ -134,7 +134,7 @@ def display_scatterplot_3D(model, user_input=None, words=None, label=None, color
                     text = words[count:count+topn] if annotation == 'On' else '',
                     name = user_input[i],
                     textposition = "top center",
-                    textfont_size = 30,
+                    textfont_size = 20,
                     mode = 'markers+text',
                     marker = {
                         'size': 10,
@@ -154,7 +154,7 @@ def display_scatterplot_3D(model, user_input=None, words=None, label=None, color
                     text = words[count:],
                     name = 'input words',
                     textposition = "top center",
-                    textfont_size = 30,
+                    textfont_size = 20,
                     mode = 'markers+text',
                     marker = {
                         'size': 10,

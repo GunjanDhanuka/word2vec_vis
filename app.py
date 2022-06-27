@@ -9,12 +9,56 @@ from gensim.models import Word2Vec
 import pandas as pd
 from plots import horizontal_bar, display_scatterplot_2D, display_scatterplot_3D
 from train import train_on_dataframe, train_on_raw_text
+import requests
 
-MODEL_PATH = "imdb_review_w2v.bin"
-# model = Word2Vec.load(MODEL_PATH)
-# if 'model' not in st.session_state:
-#     print('this ran')
-#     st.session_state['model'] = model'
+
+@st.cache
+def download_models():
+    with st.spinner("Downloading Pretrained Models. This might take a minute..."):
+        download_file_from_google_drive("1a4PRwGYjvufC--5YaiZTZAvDWzLXgwtd", "imdb.bin")
+        download_file_from_google_drive(
+            "19AlUcJQDq8i_jMIZp_1cMISHIBMlAGCJ", "marvel.bin"
+        )
+        download_file_from_google_drive(
+            "1jl1S3GFFKur0Gh5OASEoYtcR0B3hUr-0", "simpsons.bin"
+        )
+
+
+def get_confirm_token(response):
+    for key, value in response.cookies.items():
+        if key.startswith("download_warning"):
+            return value
+
+    return None
+
+
+def save_response_content(response, destination):
+    CHUNK_SIZE = 32768
+
+    with open(destination, "wb") as f:
+        for chunk in response.iter_content(CHUNK_SIZE):
+            if chunk:  # filter out keep-alive new chunks
+                f.write(chunk)
+
+
+def download_file_from_google_drive(id, destination):
+    URL = "https://docs.google.com/uc?export=download"
+
+    session = requests.Session()
+
+    response = session.get(URL, params={"id": id}, stream=True)
+    token = get_confirm_token(response)
+
+    if token:
+        params = {"id": id, "confirm": token}
+        response = session.get(URL, params=params, stream=True)
+
+    save_response_content(response, destination)
+
+
+download_models()
+MODEL_PATH = "imdb.bin"
+
 
 def append_list(sim_words, words):
 
@@ -37,14 +81,23 @@ file_type = st.sidebar.selectbox(
 )
 if file_type == "Pretrained":
     pretrained_data = st.sidebar.selectbox(
-        "Choose desired corpus", ("IMDB Reviews", "Simpsons Dialogues", "Marvel Dialogues")
+        "Choose desired corpus",
+        ("IMDB Reviews", "Simpsons Dialogues", "Marvel Dialogues"),
     )
     if pretrained_data == "IMDB Reviews":
-        MODEL_PATH = "imdb_review_w2v.bin"
+        MODEL_PATH = "imdb.bin"
         model = Word2Vec.load(MODEL_PATH)
-        st.session_state['model'] = model
-        st.session_state['method'] = 'pretrained'
+        st.session_state["model"] = model
+    elif pretrained_data == "Simpsons Dialogues":
+        MODEL_PATH = "simpsons.bin"
+        model = Word2Vec.load(MODEL_PATH)
+        st.session_state["model"] = model
+    elif pretrained_data == "Marvel Dialogues":
+        MODEL_PATH = "marvel.bin"
+        model = Word2Vec.load(MODEL_PATH)
+        st.session_state["model"] = model
     display_params = True
+    st.session_state["method"] = str(pretrained_data)
 elif file_type == "Upload text dataset":
     uploaded_file = st.sidebar.file_uploader(
         "Choose a file, CSV format for dataframes, or a single text file for raw text.",
@@ -58,109 +111,177 @@ elif file_type == "Upload text dataset":
         }
         # st.write(file_details)
         if file_details["FileType"] == "text/csv":
-            print('Uploaded CSV File')
+            print("Uploaded CSV File")
             dataframe = pd.read_csv(uploaded_file)
             text_col = st.sidebar.selectbox(
                 "Choose the column which contains text", dataframe.columns
             )
             PARAMS = dict()
-            with st.form(key='train_params'):
-                min_count = st.slider('Ignores all words with total frequency lower than this', 1, 50, 20)
-                window = st.slider('Maximum distance between the current and predicted word within a sentence.', 1, 10, 2)
-                sg_choice = st.selectbox('Training Algorithm', ('Skip-gram', 'CBOW'))
-                vector_size = st.slider('Dimensionality of the word vectors', 50, 300, 300)
-                alpha = st.slider('Initial learning rate', 0.001, 0.1, 0.03)
-                min_alpha = st.slider('Learning rate with linearly drop to min_alpha as training progresses', 0.00001, 0.001, 0.0007)
-                negative = st.slider('If > 0, negative sampling will be used, the int for negative specifies how many “noise words” should be drawn', 5, 20, 20)
-                epochs = st.slider('Number of epochs for training (more the epochs, greater the training time)', 5, 30, 10)
-                submit_button = st.form_submit_button(label='Train Word2Vec Model')
+            with st.form(key="train_params_1"):
+                min_count = st.slider(
+                    "Ignores all words with total frequency lower than this", 1, 50, 20
+                )
+                window = st.slider(
+                    "Maximum distance between the current and predicted word within a sentence.",
+                    1,
+                    10,
+                    2,
+                )
+                sg_choice = st.selectbox("Training Algorithm", ("Skip-gram", "CBOW"))
+                vector_size = st.slider(
+                    "Dimensionality of the word vectors", 50, 300, 300
+                )
+                alpha = st.slider("Initial learning rate", 0.001, 0.1, 0.03)
+                min_alpha = st.slider(
+                    "Learning rate with linearly drop to min_alpha as training progresses",
+                    0.00001,
+                    0.001,
+                    0.0007,
+                )
+                negative = st.slider(
+                    "If > 0, negative sampling will be used, the int for negative specifies how many “noise words” should be drawn",
+                    5,
+                    20,
+                    20,
+                )
+                epochs = st.slider(
+                    "Number of epochs for training (more the epochs, greater the training time)",
+                    5,
+                    30,
+                    10,
+                )
+                submit_button = st.form_submit_button(label="Train Word2Vec Model")
 
             if submit_button:
-                PARAMS['min_count'] = min_count
-                PARAMS['window'] = window
-                PARAMS['sg_choice'] = sg_choice
-                PARAMS['vector_size'] = vector_size
-                PARAMS['alpha'] = alpha
-                PARAMS['min_alpha'] = min_alpha
-                PARAMS['negative'] = negative
-                PARAMS['epochs'] = epochs
+                PARAMS["min_count"] = min_count
+                PARAMS["window"] = window
+                PARAMS["sg_choice"] = sg_choice
+                PARAMS["vector_size"] = vector_size
+                PARAMS["alpha"] = alpha
+                PARAMS["min_alpha"] = min_alpha
+                PARAMS["negative"] = negative
+                PARAMS["epochs"] = epochs
                 with st.spinner(
                     "Please wait while we prepare the data and train the model..."
                 ):
                     model = train_on_dataframe(dataframe, text_col, PARAMS)
-                    st.session_state['model'] = model
-                    st.session_state['method'] = 'dataframe'
+                    st.session_state["model"] = model
+                    st.session_state["method"] = "dataframe"
                 print("Exited model training...")
         elif file_details["FileType"] == "text/plain":
-            print('Uploaded .TXT file')
+            print("Uploaded .TXT file")
             raw_text = str(uploaded_file.read(), "utf-8")
             PARAMS = dict()
-            with st.form(key='train_params'):
-                min_count = st.slider('Ignores all words with total frequency lower than this', 1, 50, 20)
-                window = st.slider('Maximum distance between the current and predicted word within a sentence.', 1, 10, 2)
-                sg_choice = st.selectbox('Training Algorithm', ('Skip-gram', 'CBOW'))
-                vector_size = st.slider('Dimensionality of the word vectors', 50, 300, 300)
-                alpha = st.slider('Initial learning rate', 0.001, 0.1, 0.03)
-                min_alpha = st.slider('Learning rate with linearly drop to min_alpha as training progresses', 0.00001, 0.001, 0.0007)
-                negative = st.slider('If > 0, negative sampling will be used, the int for negative specifies how many “noise words” should be drawn', 5, 20, 20)
-                epochs = st.slider('Number of epochs for training (more the epochs, greater the training time)', 5, 30, 10)
-                submit_button = st.form_submit_button(label='Train Word2Vec Model')
+            with st.form(key="train_params_2"):
+                min_count = st.slider(
+                    "Ignores all words with total frequency lower than this", 1, 50, 20
+                )
+                window = st.slider(
+                    "Maximum distance between the current and predicted word within a sentence.",
+                    1,
+                    10,
+                    2,
+                )
+                sg_choice = st.selectbox("Training Algorithm", ("Skip-gram", "CBOW"))
+                vector_size = st.slider(
+                    "Dimensionality of the word vectors", 50, 300, 300
+                )
+                alpha = st.slider("Initial learning rate", 0.001, 0.1, 0.03)
+                min_alpha = st.slider(
+                    "Learning rate with linearly drop to min_alpha as training progresses",
+                    0.00001,
+                    0.001,
+                    0.0007,
+                )
+                negative = st.slider(
+                    "If > 0, negative sampling will be used, the int for negative specifies how many “noise words” should be drawn",
+                    5,
+                    20,
+                    20,
+                )
+                epochs = st.slider(
+                    "Number of epochs for training (more the epochs, greater the training time)",
+                    5,
+                    30,
+                    10,
+                )
+                submit_button = st.form_submit_button(label="Train Word2Vec Model")
 
             if submit_button:
-                PARAMS['min_count'] = min_count
-                PARAMS['window'] = window
-                PARAMS['sg_choice'] = sg_choice
-                PARAMS['vector_size'] = vector_size
-                PARAMS['alpha'] = alpha
-                PARAMS['min_alpha'] = min_alpha
-                PARAMS['negative'] = negative
-                PARAMS['epochs'] = epochs
+                PARAMS["min_count"] = min_count
+                PARAMS["window"] = window
+                PARAMS["sg_choice"] = sg_choice
+                PARAMS["vector_size"] = vector_size
+                PARAMS["alpha"] = alpha
+                PARAMS["min_alpha"] = min_alpha
+                PARAMS["negative"] = negative
+                PARAMS["epochs"] = epochs
                 with st.spinner(
                     "Please wait while we prepare the data and train the model..."
                 ):
-                    model = train_on_raw_text(raw_text,PARAMS)
-                    st.session_state['model'] = model
-                    st.session_state['method'] = 'text_file'
+                    model = train_on_raw_text(raw_text, PARAMS)
+                    st.session_state["model"] = model
+                    st.session_state["method"] = "text_file"
                 print("Exited model training...")
     display_params = True
 elif file_type == "Paste your own text":
-    print('Pasting your text option chosen')
+    print("Pasting your text option chosen")
     raw_text = st.text_area("Paste your own text here")
     PARAMS = dict()
-    with st.form(key='train_params'):
-        min_count = st.slider('Ignores all words with total frequency lower than this', 1, 10, 2)
-        window = st.slider('Maximum distance between the current and predicted word within a sentence.', 10, 100, 50)
-        sg_choice = st.selectbox('Training Algorithm', ('Skip-gram', 'CBOW'))
-        vector_size = st.slider('Dimensionality of the word vectors', 50, 300, 300)
-        alpha = st.slider('Initial learning rate', 0.001, 0.1, 0.03)
-        min_alpha = st.slider('Learning rate with linearly drop to min_alpha as training progresses', 0.00001, 0.001, 0.0007)
-        negative = st.slider('If > 0, negative sampling will be used, the int for negative specifies how many “noise words” should be drawn', 5, 20, 20)
-        epochs = st.slider('Number of epochs for training (more the epochs, greater the training time)', 5, 30, 30)
-        submit_button = st.form_submit_button(label='Train Word2Vec Model')
+    with st.form(key="train_params_3"):
+        min_count = st.slider(
+            "Ignores all words with total frequency lower than this", 1, 10, 2
+        )
+        window = st.slider(
+            "Maximum distance between the current and predicted word within a sentence.",
+            10,
+            100,
+            50,
+        )
+        sg_choice = st.selectbox("Training Algorithm", ("Skip-gram", "CBOW"))
+        vector_size = st.slider("Dimensionality of the word vectors", 50, 300, 300)
+        alpha = st.slider("Initial learning rate", 0.001, 0.1, 0.03)
+        min_alpha = st.slider(
+            "Learning rate with linearly drop to min_alpha as training progresses",
+            0.00001,
+            0.001,
+            0.0007,
+        )
+        negative = st.slider(
+            "If > 0, negative sampling will be used, the int for negative specifies how many “noise words” should be drawn",
+            5,
+            20,
+            20,
+        )
+        epochs = st.slider(
+            "Number of epochs for training (more the epochs, greater the training time)",
+            5,
+            30,
+            30,
+        )
+        submit_button = st.form_submit_button(label="Train Word2Vec Model")
 
     if submit_button:
-        PARAMS['min_count'] = min_count
-        PARAMS['window'] = window
-        PARAMS['sg_choice'] = sg_choice
-        PARAMS['vector_size'] = vector_size
-        PARAMS['alpha'] = alpha
-        PARAMS['min_alpha'] = min_alpha
-        PARAMS['negative'] = negative
-        PARAMS['epochs'] = epochs
-        with st.spinner(
-            "Please wait while we prepare the data and train the model..."
-        ):
-            model = train_on_raw_text(raw_text,PARAMS)
-            st.session_state['model'] = model
-            st.session_state['method'] = 'paste'
+        PARAMS["min_count"] = min_count
+        PARAMS["window"] = window
+        PARAMS["sg_choice"] = sg_choice
+        PARAMS["vector_size"] = vector_size
+        PARAMS["alpha"] = alpha
+        PARAMS["min_alpha"] = min_alpha
+        PARAMS["negative"] = negative
+        PARAMS["epochs"] = epochs
+        with st.spinner("Please wait while we prepare the data and train the model..."):
+            model = train_on_raw_text(raw_text, PARAMS)
+            st.session_state["model"] = model
+            st.session_state["method"] = "paste"
         print("Exited model training...")
     display_params = True
 
 
-if 'model' in st.session_state:
-    print('using saved model')
-    print('Method of ', st.session_state['method'])
-    model = st.session_state['model']
+if "model" in st.session_state:
+    print("using saved model")
+    print("Method of ", st.session_state["method"])
+    model = st.session_state["model"]
 
 if display_params:
     print("Entered display params...")
@@ -192,7 +313,9 @@ if display_params:
 
         learning_rate = st.sidebar.slider("Adjust the learning rate", 10, 1000, (200))
 
-        iteration = st.sidebar.slider("Adjust the number of iteration", 250, 100000, (1000))
+        iteration = st.sidebar.slider(
+            "Adjust the number of iteration", 250, 100000, (1000)
+        )
 
     else:
         perplexity = 0
@@ -211,7 +334,7 @@ if display_params:
 
         for words in user_input:
             if words not in model.wv.key_to_index:
-                st.warning(f"{words} is not in the vocabulary.")
+                st.sidebar.warning(f"{words} is not in the vocabulary.")
                 user_input.remove(words)
                 continue
             sim_words = model.wv.most_similar(words, topn=top_n)

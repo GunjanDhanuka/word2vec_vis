@@ -31,7 +31,6 @@ Word = WordNetLemmatizer()
 stop_words = stopwords.words('english')
 TEXT_COL = ''
 
-# @st.cache(suppress_st_warning=True)
 def train_on_dataframe(df, text_col, PARAMS):
     print('Entered training subroutine..')
     df = df.dropna().reset_index(drop=True)
@@ -132,7 +131,6 @@ def preprocess(df, TEXT_COL):
     lemmatize(df, TEXT_COL)
     print('Preprocessing finished')
     return
-
 
 def train_on_raw_text(text, PARAMS):
     print('Entered Training Subroutine')
