@@ -10,6 +10,7 @@ from scripts.plots import horizontal_bar, display_scatterplot_2D, display_scatte
 from scripts.train import train_on_dataframe, train_on_raw_text
 import requests
 
+st.set_page_config(page_title="Word Embedding Visualizing Web App", page_icon="📊")
 
 @st.cache
 def download_models():
@@ -348,22 +349,21 @@ if display_params:
         label_dict = dict([(y, x + 1) for x, y in enumerate(set(labels))])
         color_map = [label_dict[x] for x in labels]
 
-st.title("Word Embedding Visualization")
+st.title("Word Embedding Visualization using Word2Vec Model")
 
-st.header("This is a web app to visualize the word embedding.")
-st.markdown(
-    "First, choose which dimension of visualization that you want to see. There are two options: 2D and 3D."
-)
+st.header("How to use the web app?")
+st.write(
+    """On the sidebar,\n
+    1. First choose the data you want to use for visualization.
+    2. Then, if you upload a custom dataset or paste your own text.
+        you can choose the parameters for training the model.
+    3. Then, you can choose the dimensionality reduction technique - either PCA or TSNE.
+    4. Then, you can choose the dimension of the visualization - either 2D or 3D.
+    5. Then, you can type the word(s) that you want to investigate.
+    6. Then, you can select the amount of words associated with the input words you want to visualize.
 
-st.markdown(
-    "Next, type the word that you want to investigate. You can type more than one word by separating one word with other with comma (,)."
-)
-
-st.markdown(
-    "With the slider in the sidebar, you can pick the amount of words associated with the input word you want to visualize. This is done by computing the cosine similarity between vectors of words in embedding space."
-)
-st.markdown(
-    "Lastly, you have an option to enable or disable the text annotation in the visualization."
+    Lastly, you have an option to enable or disable the text annotations.
+    """
 )
 
 if dimension == "2D":
