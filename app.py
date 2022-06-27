@@ -8,7 +8,7 @@ from sklearn.manifold import TSNE
 from gensim.models import Word2Vec
 import pandas as pd
 from plots import horizontal_bar, display_scatterplot_2D, display_scatterplot_3D
-from train import train_on_dataframe
+from train import train_on_dataframe, train_on_raw_text
 
 MODEL_PATH = "imdb_review_w2v.bin"
 # model = Word2Vec.load(MODEL_PATH)
@@ -33,18 +33,19 @@ def append_list(sim_words, words):
 display_params = False
 file_type = st.sidebar.selectbox(
     "Upload your own text corpus or use one of the pretrained ones.",
-    ("Pretrained", "Custom text corpus"),
+    ("Pretrained", "Paste your own text", "Upload text dataset"),
 )
 if file_type == "Pretrained":
     pretrained_data = st.sidebar.selectbox(
-        "Choose desired corpus", ("IMDB Reviews", "Simpsons Dialogues")
+        "Choose desired corpus", ("IMDB Reviews", "Simpsons Dialogues", "Marvel Dialogues")
     )
     if pretrained_data == "IMDB Reviews":
         MODEL_PATH = "imdb_review_w2v.bin"
         model = Word2Vec.load(MODEL_PATH)
-        # st.session_state['model'] = model
+        st.session_state['model'] = model
+        st.session_state['method'] = 'pretrained'
     display_params = True
-elif file_type == "Custom text corpus":
+elif file_type == "Upload text dataset":
     uploaded_file = st.sidebar.file_uploader(
         "Choose a file, CSV format for dataframes, or a single text file for raw text.",
         type=["csv", "txt"],
@@ -57,6 +58,7 @@ elif file_type == "Custom text corpus":
         }
         # st.write(file_details)
         if file_details["FileType"] == "text/csv":
+            print('Uploaded CSV File')
             dataframe = pd.read_csv(uploaded_file)
             text_col = st.sidebar.selectbox(
                 "Choose the column which contains text", dataframe.columns
@@ -87,17 +89,77 @@ elif file_type == "Custom text corpus":
                 ):
                     model = train_on_dataframe(dataframe, text_col, PARAMS)
                     st.session_state['model'] = model
-                    if 'data' not in st.session_state:
-                        st.session_state['data'] = 'simpson'
+                    st.session_state['method'] = 'dataframe'
                 print("Exited model training...")
         elif file_details["FileType"] == "text/plain":
+            print('Uploaded .TXT file')
             raw_text = str(uploaded_file.read(), "utf-8")
+            PARAMS = dict()
+            with st.form(key='train_params'):
+                min_count = st.slider('Ignores all words with total frequency lower than this', 1, 50, 20)
+                window = st.slider('Maximum distance between the current and predicted word within a sentence.', 1, 10, 2)
+                sg_choice = st.selectbox('Training Algorithm', ('Skip-gram', 'CBOW'))
+                vector_size = st.slider('Dimensionality of the word vectors', 50, 300, 300)
+                alpha = st.slider('Initial learning rate', 0.001, 0.1, 0.03)
+                min_alpha = st.slider('Learning rate with linearly drop to min_alpha as training progresses', 0.00001, 0.001, 0.0007)
+                negative = st.slider('If > 0, negative sampling will be used, the int for negative specifies how many “noise words” should be drawn', 5, 20, 20)
+                epochs = st.slider('Number of epochs for training (more the epochs, greater the training time)', 5, 30, 10)
+                submit_button = st.form_submit_button(label='Train Word2Vec Model')
+
+            if submit_button:
+                PARAMS['min_count'] = min_count
+                PARAMS['window'] = window
+                PARAMS['sg_choice'] = sg_choice
+                PARAMS['vector_size'] = vector_size
+                PARAMS['alpha'] = alpha
+                PARAMS['min_alpha'] = min_alpha
+                PARAMS['negative'] = negative
+                PARAMS['epochs'] = epochs
+                with st.spinner(
+                    "Please wait while we prepare the data and train the model..."
+                ):
+                    model = train_on_raw_text(raw_text,PARAMS)
+                    st.session_state['model'] = model
+                    st.session_state['method'] = 'text_file'
+                print("Exited model training...")
+    display_params = True
+elif file_type == "Paste your own text":
+    print('Pasting your text option chosen')
+    raw_text = st.text_area("Paste your own text here")
+    PARAMS = dict()
+    with st.form(key='train_params'):
+        min_count = st.slider('Ignores all words with total frequency lower than this', 1, 10, 2)
+        window = st.slider('Maximum distance between the current and predicted word within a sentence.', 10, 100, 50)
+        sg_choice = st.selectbox('Training Algorithm', ('Skip-gram', 'CBOW'))
+        vector_size = st.slider('Dimensionality of the word vectors', 50, 300, 300)
+        alpha = st.slider('Initial learning rate', 0.001, 0.1, 0.03)
+        min_alpha = st.slider('Learning rate with linearly drop to min_alpha as training progresses', 0.00001, 0.001, 0.0007)
+        negative = st.slider('If > 0, negative sampling will be used, the int for negative specifies how many “noise words” should be drawn', 5, 20, 20)
+        epochs = st.slider('Number of epochs for training (more the epochs, greater the training time)', 5, 30, 30)
+        submit_button = st.form_submit_button(label='Train Word2Vec Model')
+
+    if submit_button:
+        PARAMS['min_count'] = min_count
+        PARAMS['window'] = window
+        PARAMS['sg_choice'] = sg_choice
+        PARAMS['vector_size'] = vector_size
+        PARAMS['alpha'] = alpha
+        PARAMS['min_alpha'] = min_alpha
+        PARAMS['negative'] = negative
+        PARAMS['epochs'] = epochs
+        with st.spinner(
+            "Please wait while we prepare the data and train the model..."
+        ):
+            model = train_on_raw_text(raw_text,PARAMS)
+            st.session_state['model'] = model
+            st.session_state['method'] = 'paste'
+        print("Exited model training...")
     display_params = True
 
 
-if 'model' in st.session_state and 'data' in st.session_state:
+if 'model' in st.session_state:
     print('using saved model')
-    # print('data is of ', st.session_state['data'])
+    print('Method of ', st.session_state['method'])
     model = st.session_state['model']
 
 if display_params:

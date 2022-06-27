@@ -90,7 +90,7 @@ def display_scatterplot_2D(model, user_input=None, words=None, label=None, color
 
 
     plot_figure = go.Figure(data = data, layout = layout)
-
+    plot_figure.update_layout(template='plotly_dark')
     st.plotly_chart(plot_figure)
 
 
@@ -109,14 +109,14 @@ def display_scatterplot_3D(model, user_input=None, words=None, label=None, color
     else:
         three_dim = TSNE(n_components = 3, random_state=0, perplexity = perplexity, learning_rate = learning_rate, n_iter = iteration).fit_transform(word_vectors)[:,:3]
 
-    color = 'blue'
+    color = '#f63366'
     quiver = go.Cone(
         x = [0,0,0], 
         y = [0,0,0],
         z = [0,0,0],
-        u = [1.5,0,0],
-        v = [0,1.5,0],
-        w = [0,0,1.5],
+        u = [0.1,0,0],
+        v = [0,0.1,0],
+        w = [0,0,0.1],
         anchor = "tail",
         colorscale = [[0, color] , [1, color]],
         showscale = False
@@ -187,19 +187,19 @@ def display_scatterplot_3D(model, user_input=None, words=None, label=None, color
 
 
     plot_figure = go.Figure(data = data, layout = layout)
-
+    plot_figure.update_layout(template='plotly_dark')
     st.plotly_chart(plot_figure)
 
 def horizontal_bar(word, similarity):
     
-    similarity = [ round(elem, 2) for elem in similarity ]
+    similarity = [ round(elem, 3) for elem in similarity ]
     
     data = go.Bar(
             x= similarity,
             y= word,
             orientation='h',
             text = similarity,
-            marker_color= 4,
+            marker_color= '#f63366',
             textposition='auto')
 
     layout = go.Layout(

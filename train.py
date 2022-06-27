@@ -17,6 +17,7 @@ import stqdm
 warnings.filterwarnings("ignore")
 from gensim.models.phrases import Phrases, Phraser
 from gensim.models import Word2Vec
+from gensim.parsing.preprocessing import preprocess_string
 
 import logging  # Setting up the loggings to monitor gensim
 logging.basicConfig(format="%(levelname)s - %(asctime)s: %(message)s", datefmt= '%H:%M:%S', level=logging.INFO)
@@ -24,6 +25,7 @@ logging.basicConfig(format="%(levelname)s - %(asctime)s: %(message)s", datefmt= 
 nltk.download('stopwords')
 nltk.download('wordnet')
 nltk.download('omw-1.4')
+nltk.download('punkt')
 
 Word = WordNetLemmatizer()
 stop_words = stopwords.words('english')
@@ -42,7 +44,7 @@ def train_on_dataframe(df, text_col, PARAMS):
     st.success(message)
     # min_count (float, optional) – Ignore all words and bigrams with total collected count lower than this value.
     sent = [row.split() for row in df[TEXT_COL]]
-    phrases = Phrases(sent, min_count=20, progress_per=5000)
+    phrases = Phrases(sent, min_count=PARAMS['min_count'], progress_per=5000)
     bigram = Phraser(phrases)
     sentences = bigram[sent]
 
@@ -130,4 +132,58 @@ def preprocess(df, TEXT_COL):
     lemmatize(df, TEXT_COL)
     print('Preprocessing finished')
     return
+
+
+def train_on_raw_text(text, PARAMS):
+    print('Entered Training Subroutine')
+    text = re.sub(r"[^.A-Za-z]", " ", text)
+    text = text.lower()
+    sentence_list = text.split(".")
+    sentences_without_stopword = []
+    for sentence in sentence_list:
+        temp = []
+        for word in sentence.split():
+            if word not in stop_words:
+                temp.append(word)
+        sentences_without_stopword.append(" ".join(temp))
+
+    tokens=[nltk.word_tokenize(words) for words in sentences_without_stopword]
+    phrases = Phrases(tokens, min_count=PARAMS['min_count'], progress_per=10000)
+    bigram = Phraser(phrases)
+    sentences = bigram[tokens]
+    word_freq = defaultdict(int)
+    for sent in sentences:
+        for i in sent:
+            word_freq[i] += 1
+    highest_freq = sorted(word_freq, key=word_freq.get, reverse=True)[:10]
+
+    st.write("Top 10 words from the text corpus:")
+    st.write(highest_freq)
+
+    st.info('Model training has begun!')
+    cores = multiprocessing.cpu_count() #Count the number of cores in a computer
+    w2v_model = Word2Vec(min_count=PARAMS['min_count'],
+                    window=PARAMS['window'],
+                    vector_size=PARAMS['vector_size'],
+                    sample=6e-5,
+                    sg= 1 if PARAMS['sg_choice'] == 'Skip-gram' else 0,
+                    alpha=PARAMS['alpha'], 
+                    min_alpha=PARAMS['min_alpha'], 
+                    negative=PARAMS['negative'],
+                    workers=cores-1)
+    # Building vocabulary table
+    t = time()
+    w2v_model.build_vocab(sentences, progress_per=10000)
+    message = 'Time taken to build vocab: {} mins'.format(round((time() - t) / 60, 2))
+    print(message)
+    st.success(message)
+    t = time()
+    with st.spinner('Training Word2Vec Model'):
+        w2v_model.train(sentences, total_examples=w2v_model.corpus_count, epochs=PARAMS['epochs'], report_delay=1)
+    message = 'Time taken to train the model: {} mins'.format(round((time() - t) / 60, 2))
+    st.success(message)
+    print(message)
+    if 'model' not in st.session_state:
+        st.session_state['model'] = w2v_model
+    return w2v_model
 
