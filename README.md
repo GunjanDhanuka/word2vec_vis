@@ -1,4 +1,4 @@
-![word2vec_vis](https://socialify.git.ci/GunjanDhanuka/word2vec_vis/image?description=1&descriptionEditable=Semantic%20word%20embeddings%20visualizer%20for%20your%20own%20text%20data.&font=Raleway&language=1&name=1&owner=1&pattern=Signal&theme=Dark)
+![word2vec_vis](https://socialify.git.ci/GunjanDhanuka/word2vec_vis/image?description=1&descriptionEditable=Semantic%20word%20embeddings%20visualizer%20for%20your%20own%20text%20data.&font=Rokkitt&language=1&name=1&owner=1&pattern=Signal&theme=Light)
 
 Check out the app live at Streamlit Cloud: [StreamLit link](https://gunjandhanuka-word2vec-vis-app-h90z23.streamlitapp.com/)
 
