@@ -2,6 +2,8 @@
 
 Check out the app live at Streamlit Cloud: [StreamLit link](https://gunjandhanuka-word2vec-vis-app-h90z23.streamlitapp.com/)
 
+The webapp is based on the **Efficient Estimation of Word Representations in Vector Space** paper. Read it [here.](https://arxiv.org/abs/1301.3781)
+
 ### Screencast
 [screencast.webm](https://user-images.githubusercontent.com/68523530/179350658-015f1fac-f5e8-4075-9e3a-12e09486904c.webm)
 
